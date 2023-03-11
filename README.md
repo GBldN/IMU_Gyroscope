@@ -1,7 +1,6 @@
 # IMU_Gyroscope
 <p align="center">
-<img src="Platine IMU_Bleutooth.jpg" alt="Moteur à l'arret" height=200>
-<img src="Platine IMU_Bluetooth 2.jpg" alt="Moteur en rotation" height=200> 
+<img src="Platine gyroscope.jpg" alt="Moteur à l'arret" height=400>
 </p>
 
 ## Présentation
@@ -21,10 +20,18 @@ La platine proposée est un gyroscope à 3 cardans dont 2 sont équipés de capt
 - Deux potentiomètres  Grove Rotary_Angle_Sensor : [wiki.seeedstudio.com/Grove-Rotary_Angle_Sensor](https://wiki.seeedstudio.com/Grove-Rotary_Angle_Sensor/)
 
 ## Modèle numérique 3D
-Elle est conçue pour utiliser des modules Grove que ce soit pour les centrales inertielles ou les potentiomètres.
+<p align="center">
+<img src="Modèle SW.png" alt="Moteur en rotation" height=200>
+<img src="Modèle SW2.png" alt="Moteur en rotation" height=200> 
+</p>
 
-La conception de la platine reste à optimiser en particulier le design qui reste grossier mais surtout les liaisons pivots et la solution de blocage qui sont loin d’être optimales.
-La mesure de l’ange à partir du potentiomètre n’est pas des plus précise du fait de l’offset présent lorsque la platine est horizontale et du manque de linéarité du potentiomètre.
+La platine est conçue pour utiliser des modules Grove, que ce soit pour les centrales inertielles ou les potentiomètres.
+
+Sa conception reste à optimiser en particulier le design qui reste grossier mais surtout les liaisons pivots et la solution de blocage qui sont loin d’être optimales.
+
+
+*La mesure de l’ange à partir du potentiomètre n’est pas des plus précise du fait de l’offset présent lorsque la platine est horizontale et du manque de linéarité du potentiomètre.*
+
 Les modèles SolidWorks, les fichiers stl pour l’impression ainsi que le programme arduino commenté sont proposés dans les fichiers associés.
 
 
