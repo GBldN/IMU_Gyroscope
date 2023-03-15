@@ -36,9 +36,9 @@
   #define       f_ech               100               //Choix d'une fréquence en Hz pour le calcul à intervalle régulier entre 1 et 500 Hz (ATTENTION ! 1000 doit être un multiple de f_ech)
   
   #define       pleine_echelle_acc  16                //réglage de la gamme de mesure de l'accéléromètre ±2g ; ±4g ; ±8g ou ±16g
-  #define       sensi_acc           488               //Sensibilité de l'accéléromètre en g/LSB   (réglé par défault pour 4g mais se personnalise en fonction de la pleine échelle
+  #define       sensi_acc           488               //Sensibilité de l'accéléromètre en µg/LSB   (réglé par défault pour 4g mais se personnalise en fonction de la pleine échelle
   #define       pleine_echelle_gyr  2000              //réglage de la gamme de mesure du gyromètre ± 250; 500; 1000; 2000 °/s (2; 41; 42; 83; 167; 333 tr/min) ou ±125°/s pour le LM6DS3 
-  #define       sensi_gyr           70000             //Sensibilité du gyromètre       en dps/LSB (réglé par défault pour 2000 °/s mais se personnalise en fonction de la pleine échelle)
+  #define       sensi_gyr           70000             //Sensibilité du gyromètre       en µdps/LSB (réglé par défault pour 2000 °/s mais se personnalise en fonction de la pleine échelle)
  
     
 /* ##### DEFINITION DES CONNEXIONS ##### */
@@ -117,11 +117,11 @@ void loop()
 /* -- Lecture des valeurs brutes de la centrale -- */
   lecture_valeurs_brutes();
 
-/* -- Calcul des valeurs réelles d'accélérations et de vitesses angulaires  en fonction des valeurs brutes -- */
-  Ax_reel = float(ax_brut - ax_offset) * sensi_acc / 1000000;                           //Calcul des valeurs d'accélérations en g en fonction de la sensibilité du capteur
-  Ay_reel = float(ay_brut - ay_offset) * sensi_acc / 1000000;                           //Les valeurs brutes sont codées sur 16 bits (0 et 65536)
-  Az_reel = float(az_brut - az_offset) * sensi_acc / 1000000;                           //La sensibilité du capteur dépend de la valeur pleine échelle choisie en haut et définie dans les réglages du capteur
-  Gx_reel = float(gx_brut - gx_offset) * sensi_gyr / 1000000;                           //Calcul des valeurs de vitesses angulaires en °/s
+/* -- Calcul des valeurs réelles d'accélérations en g et de vitesses angulaires en °/S (dps) en fonction des valeurs brutes et la sensibilité donnée µg/LSB et µdps/LSB  -- */
+  Ax_reel = float(ax_brut - ax_offset) * sensi_acc / 1000000; 
+  Ay_reel = float(ay_brut - ay_offset) * sensi_acc / 1000000;
+  Az_reel = float(az_brut - az_offset) * sensi_acc / 1000000;
+  Gx_reel = float(gx_brut - gx_offset) * sensi_gyr / 1000000;
   Gy_reel = float(gy_brut - gy_offset) * sensi_gyr / 1000000;
   Gz_reel = float(gz_brut - gz_offset) * sensi_gyr / 1000000;
 
