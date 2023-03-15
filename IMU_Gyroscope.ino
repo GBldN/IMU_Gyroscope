@@ -20,7 +20,9 @@
  *    - de calculer les angles de ROULIS, TANGAGE et LACET à partir du gyromètre
  *    - de calculer les angles de ROULIS et TANGAGE mécaniques entre les cardans (à partir de potentiomètres)
  *    - Afficher les 3 angles sur un écran LCD et sur le moniteur série
- *  
+ * 
+ * L'ensemble des ressources sont disponibles sur le github https://github.com/GBldN/IMU_Gyroscope
+ * 
  * version=1.0
  * author=gael.balduini@gmail.com
  * licence=CC-by-nc-sa
@@ -28,14 +30,17 @@
  * url=https://github.com/GBldN/IMU_Gyroscope
  */
 
-/* ##### DEFINITION DES MACROS POUR LA PERSONNALISATION DU MATERIEL ##### */
-  #define       f_ech               50                //Choix d'une fréquence en Hz pour le calcul à intervalle régulier entre 1 et 500 Hz (ATTENTION ! 1000 doit être un multiple de f_ech) 
-  #define       pleine_echelle_acc  2                 //réglage de la gamme de mesure de l'accéléromètre ±2g ; ±4g ; ±8g ou ±16g
-  #define       pleine_echelle_gyr  125               //réglage de la gamme de mesure du gyromètre ± 125; 250; 500; 1000; 2000 °/s (21; 41; 42; 83; 167; 333 tr/min) pour le LM6DS3 
+/* ##### DEFINITION DES MACROS ##### */
+
+/* ##### DECLARATION DES CONSTANTES ##### */
+  #define       f_ech               100               //Choix d'une fréquence en Hz pour le calcul à intervalle régulier entre 1 et 500 Hz (ATTENTION ! 1000 doit être un multiple de f_ech)
   
-/* Macro pour modifier les bits spécifiques d'un mots binaires grâce à un masque (0 pour les bits à modifier 1 pour ceux à laisser) */
-  #define modif_bit( mot_depart, ajout, masque) ( ( mot_depart & masque ) | ajout )
-  
+  #define       pleine_echelle_acc  16                //réglage de la gamme de mesure de l'accéléromètre ±2g ; ±4g ; ±8g ou ±16g
+  #define       sensi_acc           488               //Sensibilité de l'accéléromètre en g/LSB   (réglé par défault pour 4g mais se personnalise en fonction de la pleine échelle
+  #define       pleine_echelle_gyr  2000              //réglage de la gamme de mesure du gyromètre ± 250; 500; 1000; 2000 °/s (2; 41; 42; 83; 167; 333 tr/min) ou ±125°/s pour le LM6DS3 
+  #define       sensi_gyr           70000             //Sensibilité du gyromètre       en dps/LSB (réglé par défault pour 2000 °/s mais se personnalise en fonction de la pleine échelle)
+ 
+    
 /* ##### DEFINITION DES CONNEXIONS ##### */
   #define       Bp1Pin              4                 //Port de connexion de l'entrée du bouton poussoir d'etalonnage
   #define       Bp2Pin              5                 //Port de connexion de l'entrée du bouton poussoir de choix du filtre
@@ -49,32 +54,23 @@
   rgb_lcd lcd;                                        //Création de la fonction nommée ici "lcd"
   
 /* -- Définition des variables pour les entrée et mesures -- */
-  int32_t       Angle0, Angle1;                       //Variable pour le calcul de l'angle moyen à partir des potentiomètres
-  uint8_t       index = 0;                            //index pour calculer la moyenne glissante
-  uint32_t      sensi_acc         = 61;               //Sensibilité de l'accéléromètre en milli g/LSB   (réglé par défault pour ± 2   g )
-  uint32_t      sensi_gyr         = 8750;             //Sensibilité du gyromètre       en milli dps/LSB (réglé par défault pour ± 250 °/s)
-  
-  uint8_t       IMU_add           = 0x6A;             //Adresse I2c de la centrale inertielle de départ (par defaut celle de la LM6DS3)
-  uint8_t       reg_gyr           = 0x22;             //Adresse de départ de lecture des valeurs du gyromètre de départ (par defaut celle de la LM6DS3)
-  uint8_t       reg_acc           = 0x28;             //Adresse de départ de lecture des valeurs de l'accéléromètre de départ (par defaut celle de la LM6DS3)
-  
-  
+    
   int16_t       ax_brut, ay_brut, az_brut;            //Variables pour la lecture des valeurs brutes d'accélérations (accéléromètre)
   int16_t       gx_brut, gy_brut, gz_brut;            //Variables pour la lecture des valeurs brutes des vitesses angulaires (gyromètre)
   int32_t       ax_offset, ay_offset, az_offset;      //Variables pour le stockage des valeurs d'offsets de l'accéléromètre
   int32_t       gx_offset, gy_offset, gz_offset;      //Variables pour le stockage des valeurs d'offsets du gyrocope
   
-  /* -- Définition des variables pour les calcul des angles -- */
+/* -- Définition des variables pour les calcul des angles -- */
   float         Ax_reel, Ay_reel, Az_reel;            //Variables pour le calcul des valeurs réelle de l'accéléromètre valeur_brute * sensibilité / précision
   float         Gx_reel, Gy_reel, Gz_reel;            //Variables pour le calcul des valeurs réelle du gyromètre
   float         Gx_prec, Gy_prec, Gz_prec;            //Variables pour le stockage de la valeur précédente pour le calcul des angles avec le gyromètre
   
   float         roulis_gyr, tangage_gyr, lacet_gyr;   //Variables pour le calcul des angles d'inclinaisons avec le gyromètre : ROULIS, TANGAGE et LACET
   float         roulis_acc, tangage_acc;              //Variables pour le calcul des angles d'inclinaisons avec l'accéléromètre : ROULIS et TANGAGE
-  
-  volatile long t0;                                   //Variable pour stocker le temps absolu ( fontion millis() avec débordement après 50 jours environ)
-  volatile long t1;                                   //Variable pour stocker le temps absolu ( fontion millis() avec débordement après 50 jours environ)
-  
+
+/* -- Définition des variables pour le calcul du temps -- */
+  uint32_t      t0;                                   //Variable pour stocker le temps absolu ( fontion millis() avec débordement après 50 jours environ)
+  uint32_t      t1;                                   //Variable pour stocker le temps absolu ( fontion millis() avec débordement après 50 jours environ)
   
   
 /* ---------------------------------------------------- *
@@ -119,7 +115,7 @@ void loop()
   if ( digitalRead(Bp1Pin) == HIGH ) etalonnage();    //Appel de la routine d'étalonnage si appui sur le bouton poussoir
 
 /* -- Lecture des valeurs brutes de la centrale -- */
-  lecture_valeurs_brutes()
+  lecture_valeurs_brutes();
 
 /* -- Calcul des valeurs réelles d'accélérations et de vitesses angulaires  en fonction des valeurs brutes -- */
   Ax_reel = float(ax_brut - ax_offset) * sensi_acc / 1000000;                           //Calcul des valeurs d'accélérations en g en fonction de la sensibilité du capteur
@@ -225,21 +221,30 @@ void loop()
 /* -- AFFICHAGE SUR L'ECRAN LCD tous les 200 ms-- */
   if ( ( millis() - t1 ) > 200 )
   {
-    lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("R:");
     lcd.print(roulis);
+    lcd.print("   ");
+    lcd.setCursor(6, 0);
     lcd.print(";");
     lcd.print(roulis_acc , 0);
+    lcd.print("   ");
+    lcd.setCursor(11, 0);
     lcd.print(";");
     lcd.print(roulis_gyr , 0);
+    lcd.print("   ");
     lcd.setCursor(0, 1);
     lcd.print("T:");
     lcd.print(tangage);
+    lcd.print("   ");
+    lcd.setCursor(6, 1);
     lcd.print(";");
     lcd.print(tangage_acc , 0);
+    lcd.print("   ");
+    lcd.setCursor(11, 1);
     lcd.print(";");
     lcd.print(tangage_gyr , 0);
+    lcd.print("    ");
     t1= millis();
   }
 
@@ -272,9 +277,9 @@ void ECRITURE_REGISTRE(uint8_t Add_module, uint8_t Add_Registre, uint8_t Valeur)
   Wire.endTransmission();                                                              //Arrêt de l'envoie d'informations sur l'I2C
 }
 
-/* ------------------------------------------------ *
-* ROUTINE DE LECTURE DES VALEURS BRUTES DU CAPTEUR *
-* ------------------------------------------------ */
+/* ------------------------------------------------- *
+*   ROUTINE DE LECTURE DES VALEURS BRUTES DU CAPTEUR *
+* -------------------------------------------------- */
 void lecture_valeurs_brutes()
 { 
   //Variable locale pour déclarer un pointeur vers un tableau dynamique de 6 valeurs
@@ -322,7 +327,6 @@ void reglage_LM6DS3()
   /* -- REGISTRE : CTRL10_C (19h) Control register 10 (r/w) */
   ECRITURE_REGISTRE( 0x6A , 0x19 , 0b00111000 );
 }
-
   
   
 /* ------------------------------------------------ *
@@ -349,17 +353,7 @@ void etalonnage()
 
   for (int i = 1; i <= nombre_iterations; i++)
   {
-    uint8_t pTampon[6];                                                                   //Variable pour décleer le pointeur vers le stockage d'un tableau dynamique de 6 valeurs pour stocker 6 octets
-
-    LECTURE_REGISTRES( IMU_add , reg_acc , 6 , pTampon );
-    ax_brut = (pTampon[0] << 8 | pTampon[1] );                                            //Addition binaire des 2 octets
-    ay_brut = (pTampon[2] << 8 | pTampon[3] );
-    az_brut = (pTampon[4] << 8 | pTampon[5] );
-
-    LECTURE_REGISTRES( IMU_add , reg_gyr , 6 , pTampon );
-    gx_brut = ( pTampon[0] << 8 | pTampon[1] );
-    gy_brut = ( pTampon[2] << 8 | pTampon[3] );
-    gz_brut = ( pTampon[4] << 8 | pTampon[5] );
+    lecture_valeurs_brutes();
 
     ax_offset += ax_brut;                                                              //Sommation de chaque valeur pour le calcul de la moyenne
     ay_offset += ay_brut;
@@ -403,4 +397,3 @@ void etalonnage()
 
   lcd.clear();
 }
-
