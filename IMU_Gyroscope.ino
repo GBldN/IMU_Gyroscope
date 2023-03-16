@@ -69,9 +69,9 @@
   float         roulis_acc, tangage_acc;              //Variables pour le calcul des angles d'inclinaisons avec l'accéléromètre : ROULIS et TANGAGE
 
 /* -- Définition des variables pour le calcul du temps -- */
-  uint32_t      t0;                                   //Variable pour stocker le temps absolu ( fontion millis() avec débordement après 50 jours environ)
-  uint32_t      t1;                                   //Variable pour stocker le temps absolu ( fontion millis() avec débordement après 50 jours environ)
-  
+  uint32_t      t0;                                   //Variable pour stocker le temps absolu ( fonction millis() débordement après 50 jours environ )
+  uint32_t      t1;                                   //Variable pour stocker le temps absolu ( fonction millis() avec débordement après 50 jours environ)
+  /* Attention avec la fonction micros() débordement après 1h20 environ ce qui peut entrainer une erreur de calcul de l'intervalle */
   
 /* ---------------------------------------------------- *
  *  ROUTINE D'INITIALISATION  (exécutée une seule fois) *
@@ -210,12 +210,12 @@ void loop()
   */
   Serial.print(" norme = "); Serial.print(A_norme); Serial.print( "g ");
   Serial.print(" | ANGLES :");
-  Serial.print(" ROULIS Pot = ");                                           Serial.print(roulis);         Serial.print("° ");
-  Serial.print(" Acc = ");          if (roulis_acc > 0) Serial.print(" ");   Serial.print(roulis_acc , 0);   Serial.print("° ");
-  Serial.print(" - Gyr = ");        if (roulis_gyr > 0) Serial.print(" ");   Serial.print(roulis_gyr , 0);   Serial.print("° ");
-  Serial.print(" / TANGAGE Pot = ");                                        Serial.print(tangage);        Serial.print("° ");
-  Serial.print(" - Acc = ");        if (tangage_acc > 0) Serial.print(" ");  Serial.print(tangage_acc , 0);  Serial.print("° ");
-  Serial.print(" - Gyr = ");        if (tangage_gyr > 0) Serial.print(" ");  Serial.print(tangage_gyr , 0);  Serial.print("° ");
+  Serial.print(" ROULIS Pot = ");     Serial.print(roulis);           Serial.print("°");
+  Serial.print(" - Acc = ");          Serial.print(roulis_acc , 0);   Serial.print("°");
+  Serial.print(" - Gyr = ");          Serial.print(roulis_gyr , 0);   Serial.print("°");
+  Serial.print(" / TANGAGE Pot = ");  Serial.print(tangage);          Serial.print("°");
+  Serial.print(" - Acc = ");          Serial.print(tangage_acc , 0);  Serial.print("°");
+  Serial.print(" - Gyr = ");          Serial.print(tangage_gyr , 0);  Serial.print("°");
   Serial.println();
 
 /* -- AFFICHAGE SUR L'ECRAN LCD tous les 200 ms-- */
