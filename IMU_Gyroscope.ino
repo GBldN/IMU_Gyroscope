@@ -7,6 +7,12 @@
  *      . L’angle « réel » ;
  *      . L’angle calculé à partir de l’accéléromètre ;
  *      . L’angle calculé avec le gyromètre,
+ *    - L'affichage sur le moniteur série de tous les paramètres mesurés :
+ *      . Les valeurs d'accélérations et de vitesses angulaires brutes
+ *      . Les valeurs d'accélérations et de vitesses angulaires calculés
+ *      . Les valeurs de ROULIS et TANGAGE calculées avec l'accéléromètre
+ *      . Les valeurs de ROULIS,   TANGAGE mais aussi LACET (relatif) calculées avec le gyromètre
+ *      . Les valeurs de ROULIS et TANGAGE calculées à partir d'une fusion par filtrage "COMPLEMENTAIRE"
  * 
  * Matériel utilisé : 
  *    - Un Arduino UNO
@@ -14,12 +20,16 @@
  *    - Un écran LCD RGB BLACKLIGHT : https://wiki.seeedstudio.com/Grove-LCD_RGB_Backlight/
  *    - Deux potentiomètres Grove Rotary_Angle_Sensor : https://wiki.seeedstudio.com/Grove-Rotary_Angle_Sensor/
  * 
- * Ce programme permet : 
+ * Ce programme permet :
+ *    - de régler la centrale inertielle
+ *    - de réaliser un étalonnage de la centrale
  *    - d'acquérir les valeurs mesurées par la centrale inertielle, 
- *    - de calculer les angles de ROULIS, TANGAGE à partir de l'accéléromètre
- *    - de calculer les angles de ROULIS, TANGAGE et LACET à partir du gyromètre
  *    - de calculer les angles de ROULIS et TANGAGE mécaniques entre les cardans (à partir de potentiomètres)
+ *    - de calculer les angles de ROULIS, TANGAGE à partir de l'accéléromètre
+ *    - de calculer les angles de ROULIS, TANGAGE et LACET (relatif) à partir du gyromètre
+ *    - de calculer les angles de ROULIS, TANGAGE par fusion avec un FILTRE COMPLEMENTAIRE
  *    - Afficher les 3 angles sur un écran LCD et sur le moniteur série
+ *    - De relancer l
  * 
  * L'ensemble des ressources sont disponibles sur le github https://github.com/GBldN/IMU_Gyroscope
  * 
@@ -33,19 +43,18 @@
 /* ##### DEFINITION DES MACROS ##### */
 
 /* ##### DECLARATION DES CONSTANTES ##### */
-  #define       f_ech               100               //Choix d'une fréquence en Hz pour le calcul à intervalle régulier entre 1 et 500 Hz (ATTENTION ! 1000 doit être un multiple de f_ech)
-  
+  #define       f_ech               250               //Choix d'une fréquence en Hz pour le calcul à intervalle régulier entre 1 et 500 Hz (ATTENTION ! 1000 doit être un multiple de f_ech)
+  #define       alpha               0.9               //Choix d'un coefficient pour la fusion par filtre complémentaire
+ 
   #define       pleine_echelle_acc  16                //réglage de la gamme de mesure de l'accéléromètre ±2g ; ±4g ; ±8g ou ±16g
   #define       sensi_acc           488               //Sensibilité de l'accéléromètre en µg/LSB   (réglé par défault pour 4g mais se personnalise en fonction de la pleine échelle
   #define       pleine_echelle_gyr  2000              //réglage de la gamme de mesure du gyromètre ± 250; 500; 1000; 2000 °/s (2; 41; 42; 83; 167; 333 tr/min) ou ±125°/s pour le LM6DS3 
   #define       sensi_gyr           70000             //Sensibilité du gyromètre       en µdps/LSB (réglé par défault pour 2000 °/s mais se personnalise en fonction de la pleine échelle)
- 
     
 /* ##### DEFINITION DES CONNEXIONS ##### */
   #define       Bp1Pin              4                 //Port de connexion de l'entrée du bouton poussoir d'etalonnage
   #define       Bp2Pin              5                 //Port de connexion de l'entrée du bouton poussoir de choix du filtre
   #define       Potar0Pin           A0                //Port de connexion du potentiomètre
-  #define       Potar1Pin           A1                //Port de connexion du potentiomètre
   
 /* ##### DEFINITION DES CONNEXIONS ET DES VARIABLES ##### */
 /* -- Intégrations des bibiothèques -- */
@@ -67,7 +76,8 @@
   
   float         roulis_gyr, tangage_gyr, lacet_gyr;   //Variables pour le calcul des angles d'inclinaisons avec le gyromètre : ROULIS, TANGAGE et LACET
   float         roulis_acc, tangage_acc;              //Variables pour le calcul des angles d'inclinaisons avec l'accéléromètre : ROULIS et TANGAGE
-
+  float         roulis, tangage, lacet;               //Variables pour le calcul des angles d'inclinaisons fusionnés
+  
 /* -- Définition des variables pour le calcul du temps -- */
   uint32_t      t0;                                   //Variable pour stocker le temps absolu ( fonction millis() débordement après 50 jours environ )
   uint32_t      t1;                                   //Variable pour stocker le temps absolu ( fonction millis() avec débordement après 50 jours environ)
@@ -126,66 +136,56 @@ void loop()
   Gz_reel = float(gz_brut - gz_offset) * sensi_gyr / 1000000;
 
 /* -- Calcul des angles de ROULIS et TANGAGE à partir de l'accéléromètre -- */
-//CHOIX N°1
-  float A_norme = sqrt(pow(Ax_reel,2) + pow(Ay_reel,2) + pow(Az_reel,2));
-  //roulis_acc  = asin( Ay_reel / A_norme) * RAD_TO_DEG ;
   if ( Az_reel >= 0) roulis_acc  = atan2( Ay_reel ,   sqrt( pow(Ax_reel, 2) + pow(Az_reel, 2)) ) * RAD_TO_DEG;
-  else               roulis_acc  = atan2( Ay_reel , - sqrt( pow(Ax_reel, 2) + pow(Az_reel, 2)) ) * RAD_TO_DEG;
+  else               roulis_acc  = atan2( Ay_reel , - sqrt( pow(Ax_reel, 2) + pow(Az_reel, 2)) )  * RAD_TO_DEG;
   tangage_acc = atan2( - Ax_reel , Az_reel ) * RAD_TO_DEG;
 
-/*
-//CHOIX N°2
-    roulis_acc = atan2( Ay_reel , Az_reel ) * RAD_TO_DEG;
-    //tangage_acc  = asin( -Ax_reel / A_norme) * RAD_TO_DEG ;
-    if ( Az_reel >= 0) tangage_acc  = atan2(   Ax_reel ,   sqrt( pow(Ay_reel,2) + pow(Az_reel,2)) ) * RAD_TO_DEG;
-    else               tangage_acc  = atan2(   Ax_reel , - sqrt( pow(Ay_reel,2) + pow(Az_reel,2)) ) * RAD_TO_DEG;
-
-//CHOIX N°3
-    roulis_acc = atan2( Ay_reel , Az_reel ) * RAD_TO_DEG ;
-    if ( Az_reel >= 0)
-    {
-      roulis_acc  = atan2( Ay_reel , sqrt( pow(Ax_reel,2) + pow(Az_reel,2)) ) * RAD_TO_DEG;
-      tangage_acc = atan2( Ax_reel , sqrt( pow(Ay_reel,2) + pow(Az_reel,2)) ) * RAD_TO_DEG;
-    }
-    else
-    {
-      roulis_acc  = atan2( Ay_reel , -sqrt( pow(Ax_reel,2) + pow(Az_reel,2)) ) * RAD_TO_DEG;
-      tangage_acc = atan2( Ax_reel , -sqrt( pow(Ay_reel,2) + pow(Az_reel,2)) ) * RAD_TO_DEG;
-    }
-*/
-
 /* -- Initialisation des angles calculés avec le gyromètre si Stabilisation horizontale -- */
-  if ( A_norme > 0.99 && A_norme < 1.01 )
+/*  if ( A_norme > 0.99 && A_norme < 1.01 )
   {
     if ( roulis_acc  > -0.1 && roulis_acc  < 0.1 ) roulis_gyr  = 0;
     if ( tangage_acc > -0.1 && tangage_acc < 0.1 ) tangage_gyr = 0;
   }
-
+*/
 
 /* -- Calcul des vitesses angulaires autour des axes de ROULIS, TANGAGE et LACET en fonction de l'inclinaison  -- */ 
-  float roulis_vitesse  = Gx_reel * cos(tangage_gyr * DEG_TO_RAD) +   Gz_reel * sin(tangage_gyr * DEG_TO_RAD);
-  float tangage_vitesse = Gy_reel;
-  float lacet_vitesse   = Gy_reel * sin(roulis_gyr * DEG_TO_RAD)  + ( -Gx_reel * sin(tangage_gyr * DEG_TO_RAD) + Gz_reel * cos(tangage_gyr * DEG_TO_RAD) ) * cos(roulis_gyr * DEG_TO_RAD);
-   
-/* -- Calcul des angles de ROULIS ET TANGAGE à partir du gyromètre à chaque période (voir explications des calculs) -- */
-  uint16_t delta = millis() - t0;                                                       //Calcul de la période
-  if ( delta >= ( 1000 / f_ech) )                                                       //Calcul à intervalle régulier défini par le réglage de la fréquence d'échantillonnage f_ech
+  float lacet_vitesse   = ( -Gx_reel * sin(tangage * DEG_TO_RAD) + Gz_reel * cos(tangage * DEG_TO_RAD) ) / cos(roulis * DEG_TO_RAD);
+  float roulis_vitesse  = Gx_reel * cos(tangage * DEG_TO_RAD) + Gz_reel * sin(tangage * DEG_TO_RAD);
+  float tangage_vitesse = Gy_reel + ( Gx_reel * sin(tangage * DEG_TO_RAD) - Gz_reel * cos(tangage * DEG_TO_RAD) ) * tan(roulis * DEG_TO_RAD);
+  
+/* -- Calcul des angles de ROULIS ET TANGAGE à partir du gyromètre à chaque période -- */
+  //Mesure du temps depuis le dernier calcul
+  uint16_t T_ech = millis() - t0;
+  
+  //Calcul à intervalle régulier si le temps atteint la période T_ech = 1 /f_ech (fréquence d'échantillonnage) 
+  if ( T_ech >= ( 1000 / f_ech) )
   {
-    lacet_gyr   += lacet_vitesse   * float(delta) / 1000;
-    roulis_gyr  += roulis_vitesse  * float(delta) / 1000;
-    tangage_gyr += tangage_vitesse * float(delta) / 1000;
+    //Calcul des angles mesurés par le gyromètre par intégration numérique
+    lacet_gyr   += lacet_vitesse   * float(T_ech) / 1000;
+    roulis_gyr  += roulis_vitesse  * float(T_ech) / 1000;
+    tangage_gyr += tangage_vitesse * float(T_ech) / 1000;
+
+    //Calcul des angles fusionnés par le filtre COMPLEMENTAIRE
+    roulis  = alpha * roulis_gyr  + ( 1 - alpha) * roulis_acc; 
+    tangage = alpha * tangage_gyr + ( 1 - alpha) * tangage_acc;
+    
     t0 = millis();
   }
+  
+  lacet = lacet_gyr; //L'angle de lacet ne peut être calculé qu'à partir du gyromètre
   
 /* -- Modulation de l'angle calculé avec le gyromètre pour qu'il reste entre -180° et +180° -- */
   if (roulis_gyr  <  180) roulis_gyr += 360;
   if (roulis_gyr  >= 180) roulis_gyr -= 360;
   if (tangage_gyr <  180) tangage_gyr += 360;
   if (tangage_gyr >= 180) tangage_gyr -= 360;
+  if (lacet <  180) lacet += 360;
+  if (lacet >= 180) lacet -= 360;
   
-/* -- Mesure et calcul des angles de la platine avec les potentiomètres -- */
-  int16_t roulis  = round( 90 * ( 2 * float(analogRead(Potar0Pin)) - ( 158 + 876 ) ) / ( 158 - 876) );
-  int16_t tangage = round( 90 * ( 2 * float(analogRead(Potar1Pin)) - ( 885 + 161 ) ) / ( 885 - 161) );
+  
+/* -- Mesure et calcul des angles de la platine avec les potentiomètres (à personnaliser en fonction des potentimètres utilisés )-- */
+  int16_t roulis_pot  = round( 90 * ( 2 * float(analogRead(Potar0Pin)) - ( 158 + 876 ) ) / ( 158 - 876) );
+  int16_t tangage_pot = round( 90 * ( 2 * float(analogRead(Potar1Pin)) - ( 885 + 161 ) ) / ( 885 - 161) );
 
 /* -- AFFICHAGE SUR LE MONITEUR SERIE -- */
   /*
@@ -208,14 +208,16 @@ void loop()
     Serial.print(" - gY = "); Serial.print(Gy_reel,1);
     Serial.print(" - gZ = "); Serial.print(Gz_reel,0);
   */
-  Serial.print(" norme = "); Serial.print(A_norme); Serial.print( "g ");
   Serial.print(" | ANGLES :");
-  Serial.print(" ROULIS Pot = ");     Serial.print(roulis);           Serial.print("°");
+  Serial.print(" ROULIS Pot = ");     Serial.print(roulis_pot);       Serial.print("°");
   Serial.print(" - Acc = ");          Serial.print(roulis_acc , 0);   Serial.print("°");
   Serial.print(" - Gyr = ");          Serial.print(roulis_gyr , 0);   Serial.print("°");
-  Serial.print(" / TANGAGE Pot = ");  Serial.print(tangage);          Serial.print("°");
+  Serial.print(" - FILTRE = ");       Serial.print(roulis , 0);       Serial.print("°");
+  Serial.print(" / TANGAGE Pot = ");  Serial.print(tangage_pot);      Serial.print("°");
   Serial.print(" - Acc = ");          Serial.print(tangage_acc , 0);  Serial.print("°");
   Serial.print(" - Gyr = ");          Serial.print(tangage_gyr , 0);  Serial.print("°");
+  Serial.print(" - FILTRE = ");       Serial.print(tangage , 0);      Serial.print("°");
+  Serial.print(" / LACET = ");        Serial.print(lacet,0);          Serial.print("°");
   Serial.println();
 
 /* -- AFFICHAGE SUR L'ECRAN LCD tous les 200 ms-- */
@@ -223,7 +225,7 @@ void loop()
   {
     lcd.setCursor(0, 0);
     lcd.print("R:");
-    lcd.print(roulis);
+    lcd.print(roulis_pot);
     lcd.print("   ");
     lcd.setCursor(6, 0);
     lcd.print(";");
@@ -235,7 +237,7 @@ void loop()
     lcd.print("   ");
     lcd.setCursor(0, 1);
     lcd.print("T:");
-    lcd.print(tangage);
+    lcd.print(tangage_pot);
     lcd.print("   ");
     lcd.setCursor(6, 1);
     lcd.print(";");
@@ -394,6 +396,7 @@ void etalonnage()
   }
   roulis_gyr = 0;                                                                     //initialisation des calcul d'angles issues du gyroscope
   tangage_gyr = 0;
+  lacet_gyr = 0;
 
   lcd.clear();
 }
