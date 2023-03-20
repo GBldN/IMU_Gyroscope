@@ -54,7 +54,8 @@
 /* ##### DEFINITION DES CONNEXIONS ##### */
   #define       Bp1Pin              4                 //Port de connexion de l'entrée du bouton poussoir d'etalonnage
   #define       Bp2Pin              5                 //Port de connexion de l'entrée du bouton poussoir de choix du filtre
-  #define       Potar0Pin           A0                //Port de connexion du potentiomètre
+  #define       Potar0Pin           A0                //Port de connexion du potentiomètre de ROULIS
+  #define       Potar1Pin           A1                //Port de connexion du potentiomètre de TANGAGE
   
 /* ##### DEFINITION DES CONNEXIONS ET DES VARIABLES ##### */
 /* -- Intégrations des bibiothèques -- */
