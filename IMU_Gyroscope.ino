@@ -184,16 +184,15 @@ void loop()
   if (lacet >= 180) lacet -= 360;
   
   
-/* -- Mesure et calcul des angles de la platine avec les potentiomètres avec gestion de l'offset et sensibilités différentes pour tenir compte du manque de linéarité -- */
+/* -- Mesure et calcul des angles de la platine avec les potentiomètres --
+ *  Gestion de l'offset lors de l'étalonnage et sensibilités différentes pour tenir compte du manque de linéarité du potentiomètre
+ *      Potar roulis -90° : An0= 875 ; 0° : An0= 520 ; +90° : An0= 157 => sensi = 0.25 dans le sens négatif et 0.253 dans le sens positif 
+ *      Potar tangage -90° : An0= 153 ; 0° : An0= 530 ; +90° : An0= 880 => sensi = 0.25 dans le sens négatif et 0.253 dans le sens positif */
   int16_t An0 = analogRead(Potar0Pin);
   int16_t An1 = analogRead(Potar1Pin);
   int16_t roulis_pot, tangage_pot;
- 
-/* Potar roulis -90° : An0= 875 ; 0° : An0= 520 ; +90° : An0= 157 => sensi = 0.25 dans le sens négatif et 0.253 dans le sens positif */
   if (  An0 > An0_offset) roulis_pot = round( float( An0_offset - An0) * 0.245);
   else roulis_pot = round( float( An0_offset - An0 ) * 0.253 );
- 
-/* Potar tangage -90° : An0= 153 ; 0° : An0= 530 ; +90° : An0= 880 => sensi = 0.25 dans le sens négatif et 0.253 dans le sens positif */
   if (  An1 > An1_offset) tangage_pot = round( float( An1 - An1_offset ) * 0.258);
   else tangage_pot = round( float( An1 - An1_offset ) * 0.24 );
 
