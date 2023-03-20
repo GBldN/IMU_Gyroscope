@@ -198,8 +198,8 @@ void loop()
     Serial.print(" - gY = "); Serial.print(gy_brut);
     Serial.print(" - gZ = "); Serial.print(gz_brut);
   */
-  Serial.print(" | RELLES : ");
   /*
+    Serial.print(" | RELLES : ");
     Serial.print("(g)");
     Serial.print(" aX = ");   Serial.print(Ax_reel,2);
     Serial.print(" - aY = "); Serial.print(Ay_reel,2);
