@@ -149,9 +149,9 @@ void loop()
   }
 */
 
-/* -- Calcul des vitesses angulaires autour des axes de ROULIS, TANGAGE et LACET en fonction de l'inclinaison  -- */ 
+/* -- Calcul des vitesses angulaires autour des axes de ROULIS, TANGAGE et LACET en fonction de l'inclinaison  -- */  
   float lacet_vitesse   = ( -Gx_reel * sin(tangage * DEG_TO_RAD) + Gz_reel * cos(tangage * DEG_TO_RAD) ) / cos(roulis * DEG_TO_RAD);
-  float roulis_vitesse  = Gx_reel * cos(tangage * DEG_TO_RAD) + Gz_reel * sin(tangage * DEG_TO_RAD);
+  float roulis_vitesse  = Gx_reel * cos(tangage * DEG_TO_RAD) + Gz_reel * sin(tangage * DEG_TO_RAD);  
   float tangage_vitesse = Gy_reel + ( Gx_reel * sin(tangage * DEG_TO_RAD) - Gz_reel * cos(tangage * DEG_TO_RAD) ) * tan(roulis * DEG_TO_RAD);
   
 /* -- Calcul des angles de ROULIS ET TANGAGE à partir du gyromètre à chaque période -- */
@@ -184,9 +184,18 @@ void loop()
   if (lacet >= 180) lacet -= 360;
   
   
-/* -- Mesure et calcul des angles de la platine avec les potentiomètres (à personnaliser en fonction des potentimètres utilisés )-- */
-  int16_t roulis_pot  = round( 90 * ( 2 * float(analogRead(Potar0Pin)) - ( 158 + 876 ) ) / ( 158 - 876) );
-  int16_t tangage_pot = round( 90 * ( 2 * float(analogRead(Potar1Pin)) - ( 885 + 161 ) ) / ( 885 - 161) );
+/* -- Mesure et calcul des angles de la platine avec les potentiomètres avec gestion de l'offset et sensibilités différentes pour tenir compte du manque de linéarité -- */
+  int16_t An0 = analogRead(Potar0Pin);
+  int16_t An1 = analogRead(Potar1Pin);
+  int16_t roulis_pot, tangage_pot;
+ 
+/* Potar roulis -90° : An0= 875 ; 0° : An0= 520 ; +90° : An0= 157 => sensi = 0.25 dans le sens négatif et 0.253 dans le sens positif */
+  if (  An0 > An0_offset) roulis_pot = round( float( An0_offset - An0) * 0.245);
+  else roulis_pot = round( float( An0_offset - An0 ) * 0.253 );
+ 
+/* Potar tangage -90° : An0= 153 ; 0° : An0= 530 ; +90° : An0= 880 => sensi = 0.25 dans le sens négatif et 0.253 dans le sens positif */
+  if (  An1 > An1_offset) tangage_pot = round( float( An1 - An1_offset ) * 0.258);
+  else tangage_pot = round( float( An1 - An1_offset ) * 0.24 );
 
 /* -- AFFICHAGE SUR LE MONITEUR SERIE -- */
   /*
